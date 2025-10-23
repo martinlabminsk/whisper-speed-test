@@ -10,7 +10,6 @@ class FFmpegNotFoundError(RuntimeError):
 def download_audio(
     url: str,
     out_dir: str = "downloads",
-    filename_pattern: str = "%(title)s.%(ext)s",
     ext: str = "mp3",
     bitrate_kbps: int = 192,
 ) -> Optional[pathlib.Path]:
@@ -21,7 +20,6 @@ def download_audio(
     Аргументы:
       - url: ссылка на видео (например, https://www.youtube.com/watch?v=...).
       - out_dir: папка для сохранения.
-      - filename_pattern: шаблон имени файла yt-dlp (оставьте по умолчанию).
       - ext: целевой формат аудио: 'mp3' или 'm4a' и т.п.
       - bitrate_kbps: целевой битрейт для mp3 (игнорируется для некоторых контейнеров).
     
@@ -46,7 +44,7 @@ def download_audio(
 
     ydl_opts = {
         "format": "bestaudio/best",
-        "outtmpl": os.path.join(out_dir, filename_pattern),
+        "outtmpl": os.path.join(out_dir, "output.%(ext)s"),  # Always use "output" as the filename
         "quiet": True,          # без лишнего шума в консоли
         "noprogress": True,
         "postprocessors": postprocessors,
@@ -60,27 +58,30 @@ def download_audio(
     try:
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            # yt-dlp возвращает итоговое имя файла через prepare_filename до постпроцессинга,
-            # поэтому вычислим ожидаемое имя с учётом ext.
-            temp_path = pathlib.Path(ydl.prepare_filename(info))
-            final_path = temp_path.with_suffix(f".{ext}")
-
-            # Иногда у YouTube в названии бывают недопустимые символы,
-            # yt-dlp уже нормализует имя, но проверим существование:
+            # Since we're using a fixed filename, we can directly construct the final path
+            final_path = pathlib.Path(out_dir) / f"output.{ext}"
+            
+            # Check if the file exists
             if final_path.exists():
                 return final_path.resolve()
-
-            # На случай, если контейнер уже был целевым (например, m4a)
-            if temp_path.exists() and temp_path.suffix.lower() == f".{ext.lower()}":
-                return temp_path.resolve()
-
-            # Если ничего не нашли, попробуем отыскать по каталогу последний изменённый файл с нужным расширением
+            
+            # If not found, try to find the most recently modified file with the correct extension
             candidates = sorted(
                 pathlib.Path(out_dir).glob(f"*.{ext}"),
                 key=lambda p: p.stat().st_mtime,
                 reverse=True,
             )
-            return candidates[0].resolve() if candidates else None
+            
+            if candidates:
+                # Rename the file to "output.{ext}" if it's not already named that way
+                file_path = candidates[0]
+                if file_path.name != f"output.{ext}":
+                    new_path = file_path.parent / f"output.{ext}"
+                    file_path.rename(new_path)
+                    return new_path.resolve()
+                return file_path.resolve()
+            
+            return None
     except Exception as e:
         print(f"Ошибка загрузки: {e}")
         return None
