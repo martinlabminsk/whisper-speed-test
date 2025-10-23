@@ -87,7 +87,7 @@ def download_audio(
         return None
 
 if __name__ == "__main__":
-    test_url = "https://www.youtube.com/watch?v=8Me3xlXh5Tk"
+    test_url = "https://www.youtube.com/watch?v=LqV6T_X_QLc"
     directory = "downloads/"
     path = download_audio(test_url, out_dir=directory, ext="mp3")
     print("Сохранено в:", path)
