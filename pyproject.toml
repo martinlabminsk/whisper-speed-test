@@ -5,5 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "faster-whisper>=1.2.0",
+    "jiwer>=4.0.0",
+    "openai-whisper>=20250625",
+    "psutil>=7.1.1",
     "yt-dlp>=2025.10.22",
 ]
